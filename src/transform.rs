@@ -549,7 +549,6 @@ impl WalnutHandler {
         self.program.visit_mut_with(&mut w_finalize);
 
         if w_finalize.resolver_locs.len() > 0 {
-            //self.resolved_labels = try_resolve_resolver_label(w_finalize.resolver_locs, &self.entry_id);
             let resolved_labels = try_resolve_resolver_label(
                 w_finalize.resolver_locs,
                 &self.entry_id
@@ -560,7 +559,6 @@ impl WalnutHandler {
                 self.label_map.insert(v.clone(), k);
             }
         }
-        //println!("{}", output.code);
     }
 
     #[napi]
