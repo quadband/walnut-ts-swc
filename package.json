@@ -1,0 +1,35 @@
+{
+  "name": "@quadband/walnut-ts-swc",
+  "version": "0.0.0",
+  "main": "index.mjs",
+  "type": "module",
+  "types": "index.d.ts",
+  "napi": {
+    "name": "walnut-ts-swc",
+    "triples": {}
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@napi-rs/cli": "^2.18.0",
+    "@types/node": "^20.11.10",
+    "ava": "^6.0.1",
+    "unbuild": "^2.0.0"
+  },
+  "ava": {
+    "timeout": "3m"
+  },
+  "engines": {
+    "node": ">= 10"
+  },
+  "scripts": {
+    "artifacts": "napi artifacts",
+    "build": "napi build --js glue.cjs --dts glue.d.cts --platform --release && unbuild",
+    "build:debug": "napi build --js glue.cjs --dts glue.d.cts --platform && unbuild",
+    "build:ts": "unbuild",
+    "prepublishOnly": "napi prepublish -t npm",
+    "test": "ava",
+    "universal": "napi universal",
+    "version": "napi version"
+  },
+  "packageManager": "yarn@4.0.2"
+}
