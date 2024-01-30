@@ -9,5 +9,5 @@ extern crate napi_derive;
 
 #[napi]
 pub fn get_handler(code: String, id: String, walnut_key: String) -> WalnutHandler {
-  WalnutHandler::new(code, id, walnut_key)
+    WalnutHandler::new(code, id, walnut_key)
 }

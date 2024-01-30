@@ -4,14 +4,14 @@ export function walnutParse(
   code: string,
   id: string,
   walnutKey: string,
-  resolverFn?: ResolverFn,
+  resolverFn?: ResolverFn
 ): string {
   const handler = getHandler(code, id, walnutKey);
   handler.run();
   if (handler.needResolver) {
     if (!resolverFn) {
       throw new Error(
-        "Walnut encountered a resolver but has no resolver function",
+        "Walnut encountered a resolver but has no resolver function"
       );
     }
 

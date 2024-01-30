@@ -12,7 +12,7 @@ napi = { version = "2.12.2", default-features = false, features = ["napi4"] }
 napi-derive = "2.12.2"
 swc = { version = "*" }
 swc_atoms = { version = "*" }
-swc_common = { version = "*", features = ["tty-emitter"]}
+swc_common = { version = "*", features = ["tty-emitter"] }
 swc_ecma_ast = { version = "*" }
 swc_ecma_loader = { version = "*" }
 swc_ecma_parser = { version = "*" }
