@@ -65,7 +65,7 @@ impl WalnutTransform {
 
     fn transform_val(&mut self, e: &mut CallExpr) -> Option<Expr> {
         let val_obj = {
-            let mut v = ObjectLitFinder::default();
+            let mut v = ObjectLitFinder::new();
             e.visit_with(&mut v);
             match v.res {
                 Some(v) => v,
@@ -266,7 +266,7 @@ impl WalnutTransform {
 impl VisitMut for WalnutTransform {
     fn visit_mut_var_declarator(&mut self, n: &mut VarDeclarator) {
         let mut walnut_call_expr = {
-            let mut v = WalnutFinder::default();
+            let mut v = WalnutFinder::new();
             n.visit_with(&mut v);
             match v.res {
                 Some(v) => v,
@@ -339,12 +339,16 @@ impl VisitMut for WalnutTransform {
 /*
     A helper struct to find a usage of a Walnut Function undeneath a variable declaration.
 */
-#[derive(Default)]
 struct WalnutFinder {
     res: Option<CallExpr>,
 }
 
 impl WalnutFinder {
+
+    pub fn new() -> Self {
+        WalnutFinder { res: None }
+    }
+
     fn is_valid_identifier(e: &Expr) -> bool {
         match e {
             Expr::Ident(i) =>
@@ -373,9 +377,14 @@ impl Visit for WalnutFinder {
 /*
     A little helper struct to grab the object literal in Val and PVal
 */
-#[derive(Default)]
 struct ObjectLitFinder {
     res: Option<ObjectLit>,
+}
+
+impl ObjectLitFinder {
+    pub fn new() -> Self {
+        ObjectLitFinder{ res: None }
+    }
 }
 
 impl Visit for ObjectLitFinder {
@@ -393,6 +402,14 @@ struct WalnutFinalize {
 }
 
 impl WalnutFinalize {
+
+    pub fn new(resolver_imports_to_remove: HashSet<(Atom, SyntaxContext)>) -> Self {
+        WalnutFinalize{
+            resolver_imports_to_remove,
+            resolver_locs: HashMap::new()
+        }
+    }
+
     fn check_import_id(&mut self, decl: &mut ImportDecl) {
         let mut removed_something = false;
         for (pos, s) in decl.specifiers.clone().iter().enumerate() {
@@ -549,7 +566,6 @@ impl WalnutHandler {
 
         // Transform pass
         let mut w_trans = WalnutTransform::new(self.walnut_key.clone());
-
         self.program.visit_mut_with(&mut w_trans);
 
         if w_trans.resolver_ids.len() > 0 {
@@ -557,11 +573,7 @@ impl WalnutHandler {
         }
 
         // Final pass for cleanup and stuff
-        let mut w_finalize = WalnutFinalize {
-            resolver_imports_to_remove: w_trans.resolver_ids.clone(),
-            resolver_locs: HashMap::new(),
-        };
-
+        let mut w_finalize = WalnutFinalize::new(w_trans.resolver_ids.clone());
         self.program.visit_mut_with(&mut w_finalize);
 
         if w_finalize.resolver_locs.len() > 0 {
@@ -698,19 +710,25 @@ fn get_resolver_label(search_id: &String, res_path: FileName) -> Option<String> 
         )
         .expect("Failed to parse");
 
-    let mut label_finder = ResLabelFinder {
-        search_id: search_id.clone(),
-        label: None,
-    };
+    let mut label_finder = ResLabelFinder::new(search_id.clone());
+
     program.visit_with(&mut label_finder);
 
     label_finder.label
-
 }
 
 struct ResLabelFinder {
     search_id: String,
     label: Option<String>,
+}
+
+impl ResLabelFinder {
+    pub fn new(search_id: String) -> Self {
+        ResLabelFinder{
+            search_id,
+            label: None
+        }
+    }
 }
 
 impl Visit for ResLabelFinder {
@@ -724,7 +742,7 @@ impl Visit for ResLabelFinder {
             };
 
             if name == self.search_id {
-                let mut v = LabelExtractor { res: None };
+                let mut v = LabelExtractor::new();
                 n.visit_children_with(&mut v);
 
                 self.label = v.res;
@@ -738,6 +756,12 @@ struct LabelExtractor {
 }
 
 impl LabelExtractor {
+    pub fn new() -> Self {
+        LabelExtractor{
+            res: None
+        }
+    }
+
     fn is_valid_identifier(e: &Expr) -> bool {
         match e {
             Expr::Member(MemberExpr { obj, prop: MemberProp::Ident(prop), .. }) =>
