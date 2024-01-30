@@ -11,7 +11,6 @@ use swc_common::{
     util::take::Take,
     FileName,
     SourceMap,
-    SyntaxContext,
     DUMMY_SP,
 };
 use swc_ecma_ast::*;
@@ -33,7 +32,7 @@ impl WalnutSymbols {
 */
 struct WalnutTransform {
     walnut_key: String,
-    resolver_ids: Vec<(Atom, SyntaxContext)>,
+    resolver_ids: Vec<String>,
     is_in_jsx: bool
 }
 
@@ -140,17 +139,17 @@ impl WalnutTransform {
             }
         };
 
-        let (resolver_id, resolver_string) = match *arg.expr {
+        let resolver_id = match *arg.expr {
             Expr::Ident(i) => {
-                (i.to_id(), String::from(&*i.sym))
-                //String::from(&*i.sym)
+                //(i.to_id(), String::from(&*i.sym))
+                String::from(&*i.sym)
             }
             _ => {
                 return None;
             }
         };
 
-        let mark_string = format!("/* __wres_{resolver_string} */");
+        let mark_string = format!("/* __wres_{resolver_id} */");
 
         let mark_val = Atom::new(mark_string);
 
@@ -397,30 +396,30 @@ impl Visit for ObjectLitFinder {
     A struct to clean up any Walnut imports and do various other things for final pass
 */
 struct WalnutFinalize {
-    resolver_imports_to_remove: HashSet<(Atom, SyntaxContext)>,
-    resolver_locs: HashMap<(Atom, SyntaxContext), String>,
+    resolver_imports_to_remove: HashSet<String>,
+    resolver_locs: HashMap<String, String>,
 }
 
 impl WalnutFinalize {
 
-    pub fn new(resolver_imports_to_remove: HashSet<(Atom, SyntaxContext)>) -> Self {
+    pub fn new(resolver_imports_to_remove: HashSet<String>) -> Self {
         WalnutFinalize{
             resolver_imports_to_remove,
             resolver_locs: HashMap::new()
         }
     }
 
-    fn remove_import_id(&mut self, decl: &mut ImportDecl, id: Id) {
+    fn remove_import_id(&mut self, decl: &mut ImportDecl, id_string: &String) {
         if let Some(idx) = decl.specifiers.iter().position(|val| 
             match val {
                 ImportSpecifier::Named(v) => {
-                    id == v.local.to_id()
+                    id_string == &String::from(&*v.local.sym)
                 },
                 ImportSpecifier::Default(v) => {
-                    id == v.local.to_id()
+                    id_string == &String::from(&*v.local.sym)
                 },
                 ImportSpecifier::Namespace(v) => {
-                    id == v.local.to_id()
+                    id_string == &String::from(&*v.local.sym)
                 }
             }
         ) {
@@ -433,27 +432,27 @@ impl WalnutFinalize {
         for s in decl.specifiers.clone().iter() {
             match s {
                 ImportSpecifier::Named(v) => {
-                    if self.resolver_imports_to_remove.contains(&v.local.to_id()) {
-                        //decl.specifiers.remove(pos);
-                        self.remove_import_id(decl, v.local.to_id());
+                    let id_string = String::from(&*v.local.sym);
+                    if self.resolver_imports_to_remove.contains(&id_string) {
+                        self.remove_import_id(decl, &id_string);
                         removed_something = true;
-                        self.resolver_locs.insert(v.local.to_id(), String::from(&*decl.src.value));
+                        self.resolver_locs.insert(id_string, String::from(&*decl.src.value));
                     }
                 }
                 ImportSpecifier::Default(v) => {
-                    if self.resolver_imports_to_remove.contains(&v.local.to_id()) {
-                        //decl.specifiers.remove(pos);
-                        self.remove_import_id(decl, v.local.to_id());
+                    let id_string = String::from(&*v.local.sym);
+                    if self.resolver_imports_to_remove.contains(&id_string) {
+                        self.remove_import_id(decl, &id_string);
                         removed_something = true;
-                        self.resolver_locs.insert(v.local.to_id(), String::from(&*decl.src.value));
+                        self.resolver_locs.insert(id_string, String::from(&*decl.src.value));
                     }
                 }
                 ImportSpecifier::Namespace(v) => {
-                    if self.resolver_imports_to_remove.contains(&v.local.to_id()) {
-                        //decl.specifiers.remove(pos);
-                        self.remove_import_id(decl, v.local.to_id());
+                    let id_string = String::from(&*v.local.sym);
+                    if self.resolver_imports_to_remove.contains(&id_string) {
+                        self.remove_import_id(decl, &id_string);
                         removed_something = true;
-                        self.resolver_locs.insert(v.local.to_id(), String::from(&*decl.src.value));
+                        self.resolver_locs.insert(id_string, String::from(&*decl.src.value));
                     }
                 }
             }
@@ -594,7 +593,7 @@ impl WalnutHandler {
         }
 
         // Final pass for cleanup and stuff
-        let mut resolver_hash_set: HashSet<(Atom, SyntaxContext)> = HashSet::new();
+        let mut resolver_hash_set: HashSet<String> = HashSet::new();
         // Loop over the returned vec to generate a hash map
         for id in w_trans.resolver_ids.iter() {
             resolver_hash_set.insert(id.clone());
@@ -611,13 +610,13 @@ impl WalnutHandler {
 
             // We do this to call any resolver that dynamically returns a result.
             for id in w_trans.resolver_ids.iter() {
-                let k = String::from(&*id.0);
-                let Some(v) = resolved_labels.get(&k)
+                let k = id;
+                let Some(v) = resolved_labels.get(k)
                 else {
                     return
                 };
                 self.resolver_labels.push(v.clone());
-                self.label_map.insert(v.clone(), k);
+                self.label_map.insert(v.clone(), k.clone());
             }
         }
     }
@@ -677,7 +676,7 @@ impl WalnutHandler {
 }
 
 fn try_resolve_resolver_label(
-    resolver_locs: HashMap<(Atom, SyntaxContext), String>,
+    resolver_locs: HashMap<String, String>,
     entry_id: &String
 ) -> HashMap<String, String> {
     let alias_map: AHashMap<String, String> = AHashMap::default();
@@ -704,7 +703,7 @@ fn try_resolve_resolver_label(
             }
         };
 
-        let search_id = String::from(&*id.0);
+        let search_id = id;
 
         let label = get_resolver_label(&search_id, res_path);
 
