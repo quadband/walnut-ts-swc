@@ -19,6 +19,8 @@ use swc_ecma_loader::{ resolve::Resolve, TargetEnv };
 use swc_ecma_parser::{ Syntax, TsConfig };
 use swc_ecma_visit::{ Visit, VisitMut, VisitMutWith, VisitWith };
 
+use crate::scan_first::ScanFirst;
+
 struct WalnutSymbols;
 impl WalnutSymbols {
     const VAL: &'static str = "$Val";
@@ -372,13 +374,6 @@ struct WalnutFinalize {
 }
 
 impl WalnutFinalize {
-    fn check_if_walnut_import(&mut self, src: &str) -> bool {
-        if src.contains("walnut-ts") {
-            return true;
-        }
-        false
-    }
-
     fn check_import_id(&mut self, decl: &mut ImportDecl) {
         let mut removed_something = false;
         for (pos, s) in decl.specifiers.clone().iter().enumerate() {
@@ -418,9 +413,6 @@ impl WalnutFinalize {
 
 impl VisitMut for WalnutFinalize {
     fn visit_mut_import_decl(&mut self, n: &mut ImportDecl) {
-        if self.check_if_walnut_import(&*n.src.value) {
-            n.take();
-        }
         self.check_import_id(n);
     }
 
@@ -477,6 +469,7 @@ pub struct WalnutHandler {
     compiler: swc::Compiler,
     program: Program,
     walnut_key: String,
+    input_code: String,
     output_code: Option<String>,
     pub need_resolver: bool,
     resolver_labels: Vec<String>,
@@ -492,7 +485,7 @@ impl WalnutHandler {
 
         let compiler = swc::Compiler::new(cm.clone());
 
-        let fm = cm.new_source_file(FileName::Custom(id.clone()), code);
+        let fm = cm.new_source_file(FileName::Custom(id.clone()), code.clone());
 
         let program = compiler
             .parse_js(
@@ -515,6 +508,7 @@ impl WalnutHandler {
             compiler,
             program,
             walnut_key,
+            input_code: code,
             output_code: None,
             need_resolver: false,
             entry_id: id,
@@ -525,6 +519,15 @@ impl WalnutHandler {
 
     #[napi]
     pub fn run(&mut self) {
+
+        let mut scan_first = ScanFirst::new();
+        self.program.visit_mut_with(&mut scan_first);
+
+        if !scan_first.should_run { 
+            self.output_code = Some(self.input_code.clone());
+            return 
+        }
+
         // Transform pass
         let mut w_trans = WalnutTransform {
             walnut_key: self.walnut_key.clone(),
