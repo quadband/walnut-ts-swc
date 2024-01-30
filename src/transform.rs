@@ -20,11 +20,11 @@ use swc_ecma_visit::{ Visit, VisitMut, VisitMutWith, VisitWith };
 
 use crate::scan_first::ScanFirst;
 
-struct WalnutSymbols;
+pub(crate) struct WalnutSymbols;
 impl WalnutSymbols {
-    const VAL: &'static str = "$Val";
-    const PVAL: &'static str = "$PVal";
-    const RESOLVE: &'static str = "$Resolve";
+    pub const VAL: &'static str = "$Val";
+    pub const PVAL: &'static str = "$PVal";
+    pub const RESOLVE: &'static str = "$Resolve";
 }
 
 /*
