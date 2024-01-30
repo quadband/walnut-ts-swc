@@ -13,8 +13,10 @@ const testFiles = [
 ];
 
 const walnutKey = "test";
+let someNum = 0;
 const resolverFn = (label) => {
-    return "'example resolve'";
+    if(label == "uniqueLabel") return "'example resolve'";
+    if(label == "dynRes") return `${someNum++}`;
 };
 
 for(let i=0, len=testFiles.length;i<len;i++){
@@ -25,7 +27,7 @@ for(let i=0, len=testFiles.length;i<len;i++){
         walnutKey, 
         resolverFn
     );
-    //console.log(parsed);
+    console.log(parsed);
     console.log(testFiles[i].id);
     console.log("Time:", performance.now() - start,"ms");
 }

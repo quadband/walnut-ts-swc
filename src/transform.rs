@@ -33,7 +33,7 @@ impl WalnutSymbols {
 */
 struct WalnutTransform {
     walnut_key: String,
-    resolver_ids: HashSet<(Atom, SyntaxContext)>,
+    resolver_ids: Vec<(Atom, SyntaxContext)>,
     is_in_jsx: bool
 }
 
@@ -42,7 +42,7 @@ impl WalnutTransform {
     pub fn new(walnut_key: String) -> Self {
         WalnutTransform {
             walnut_key: walnut_key,
-            resolver_ids: HashSet::new(),
+            resolver_ids: Vec::new(),
             is_in_jsx: false
         }
     }
@@ -162,7 +162,7 @@ impl WalnutTransform {
             })
         );
 
-        self.resolver_ids.insert(resolver_id);
+        self.resolver_ids.push(resolver_id);
 
         Some(marker)
     }
@@ -410,27 +410,48 @@ impl WalnutFinalize {
         }
     }
 
+    fn remove_import_id(&mut self, decl: &mut ImportDecl, id: Id) {
+        if let Some(idx) = decl.specifiers.iter().position(|val| 
+            match val {
+                ImportSpecifier::Named(v) => {
+                    id == v.local.to_id()
+                },
+                ImportSpecifier::Default(v) => {
+                    id == v.local.to_id()
+                },
+                ImportSpecifier::Namespace(v) => {
+                    id == v.local.to_id()
+                }
+            }
+        ) {
+            decl.specifiers.swap_remove(idx);
+        }
+    }
+
     fn check_import_id(&mut self, decl: &mut ImportDecl) {
         let mut removed_something = false;
-        for (pos, s) in decl.specifiers.clone().iter().enumerate() {
+        for s in decl.specifiers.clone().iter() {
             match s {
                 ImportSpecifier::Named(v) => {
                     if self.resolver_imports_to_remove.contains(&v.local.to_id()) {
-                        decl.specifiers.remove(pos);
+                        //decl.specifiers.remove(pos);
+                        self.remove_import_id(decl, v.local.to_id());
                         removed_something = true;
                         self.resolver_locs.insert(v.local.to_id(), String::from(&*decl.src.value));
                     }
                 }
                 ImportSpecifier::Default(v) => {
                     if self.resolver_imports_to_remove.contains(&v.local.to_id()) {
-                        decl.specifiers.remove(pos);
+                        //decl.specifiers.remove(pos);
+                        self.remove_import_id(decl, v.local.to_id());
                         removed_something = true;
                         self.resolver_locs.insert(v.local.to_id(), String::from(&*decl.src.value));
                     }
                 }
                 ImportSpecifier::Namespace(v) => {
                     if self.resolver_imports_to_remove.contains(&v.local.to_id()) {
-                        decl.specifiers.remove(pos);
+                        //decl.specifiers.remove(pos);
+                        self.remove_import_id(decl, v.local.to_id());
                         removed_something = true;
                         self.resolver_locs.insert(v.local.to_id(), String::from(&*decl.src.value));
                     }
@@ -573,7 +594,13 @@ impl WalnutHandler {
         }
 
         // Final pass for cleanup and stuff
-        let mut w_finalize = WalnutFinalize::new(w_trans.resolver_ids.clone());
+        let mut resolver_hash_set: HashSet<(Atom, SyntaxContext)> = HashSet::new();
+        // Loop over the returned vec to generate a hash map
+        for id in w_trans.resolver_ids.iter() {
+            resolver_hash_set.insert(id.clone());
+        }
+
+        let mut w_finalize = WalnutFinalize::new(resolver_hash_set);
         self.program.visit_mut_with(&mut w_finalize);
 
         if w_finalize.resolver_locs.len() > 0 {
@@ -582,7 +609,13 @@ impl WalnutHandler {
                 &self.entry_id
             );
 
-            for (k, v) in resolved_labels {
+            // We do this to call any resolver that dynamically returns a result.
+            for id in w_trans.resolver_ids.iter() {
+                let k = String::from(&*id.0);
+                let Some(v) = resolved_labels.get(&k)
+                else {
+                    return
+                };
                 self.resolver_labels.push(v.clone());
                 self.label_map.insert(v.clone(), k);
             }
