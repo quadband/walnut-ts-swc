@@ -27,7 +27,6 @@ impl VisitMut for ScanFirst {
             n.take();
             self.should_run = true;
         }
-
     }
 }
 

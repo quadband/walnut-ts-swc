@@ -690,14 +690,8 @@ fn get_resolver_label(search_id: &String, res_path: FileName) -> Option<String> 
     };
     program.visit_with(&mut label_finder);
 
-    match label_finder.label {
-        Some(s) => {
-            return Some(s);
-        }
-        None => {
-            return None;
-        }
-    }
+    label_finder.label
+
 }
 
 struct ResLabelFinder {
@@ -719,15 +713,7 @@ impl Visit for ResLabelFinder {
                 let mut v = LabelExtractor { res: None };
                 n.visit_children_with(&mut v);
 
-                match v.res {
-                    Some(s) => {
-                        self.label = Some(s);
-                        return;
-                    }
-                    None => {
-                        return;
-                    }
-                }
+                self.label = v.res;
             }
         }
     }
