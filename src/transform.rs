@@ -34,9 +34,19 @@ impl WalnutSymbols {
 struct WalnutTransform {
     walnut_key: String,
     resolver_ids: HashSet<(Atom, SyntaxContext)>,
+    is_in_jsx: bool
 }
 
 impl WalnutTransform {
+
+    pub fn new(walnut_key: String) -> Self {
+        WalnutTransform {
+            walnut_key: walnut_key,
+            resolver_ids: HashSet::new(),
+            is_in_jsx: false
+        }
+    }
+
     fn transform_tool(&mut self, e: &mut CallExpr) -> Option<Expr> {
         match e.callee.clone() {
             Callee::Expr(callee) =>
@@ -279,9 +289,20 @@ impl VisitMut for WalnutTransform {
         }
     }
 
+    fn visit_mut_jsx_fragment(&mut self, n: &mut JSXFragment) {
+        if self.is_in_jsx { return }
+        self.is_in_jsx = true;
+        n.visit_mut_children_with(self);
+        self.is_in_jsx = false;
+    }
+
     fn visit_mut_jsx_element(&mut self, n: &mut JSXElement) {
+        let old_is_in_jsx = self.is_in_jsx;
+        self.is_in_jsx = true;
+
         n.visit_mut_children_with(self);
         if n.closing == None {
+            self.is_in_jsx = old_is_in_jsx;
             return;
         }
 
@@ -292,9 +313,8 @@ impl VisitMut for WalnutTransform {
                 JSXElementChild::JSXFragment(frag) => {
                     self.handle_fragment(&mut frag.clone());
                     new_children.push(child.clone());
-                }
+                },
                 JSXElementChild::JSXElement(el) => {
-                    //self.handle_element(el);
                     if !self.is_valid_jsx_identifier(&el.opening.name) {
                         new_children.push(child.clone());
                         continue;
@@ -304,7 +324,7 @@ impl VisitMut for WalnutTransform {
                             new_children.push(el_ch.clone());
                         }
                     }
-                }
+                },
                 _ => {
                     new_children.push(child.clone());
                 }
@@ -312,8 +332,7 @@ impl VisitMut for WalnutTransform {
         }
 
         n.children = new_children;
-
-        //println!("{:?}", n.opening.name);
+        self.is_in_jsx = old_is_in_jsx;
     }
 }
 
@@ -529,10 +548,7 @@ impl WalnutHandler {
         }
 
         // Transform pass
-        let mut w_trans = WalnutTransform {
-            walnut_key: self.walnut_key.clone(),
-            resolver_ids: HashSet::new(),
-        };
+        let mut w_trans = WalnutTransform::new(self.walnut_key.clone());
 
         self.program.visit_mut_with(&mut w_trans);
 
