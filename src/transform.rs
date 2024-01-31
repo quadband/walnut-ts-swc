@@ -33,16 +33,15 @@ impl WalnutSymbols {
 struct WalnutTransform {
     walnut_key: String,
     resolver_ids: Vec<String>,
-    is_in_jsx: bool
+    is_in_jsx: bool,
 }
 
 impl WalnutTransform {
-
     pub fn new(walnut_key: String) -> Self {
         WalnutTransform {
             walnut_key: walnut_key,
             resolver_ids: Vec::new(),
-            is_in_jsx: false
+            is_in_jsx: false,
         }
     }
 
@@ -289,7 +288,9 @@ impl VisitMut for WalnutTransform {
     }
 
     fn visit_mut_jsx_fragment(&mut self, n: &mut JSXFragment) {
-        if self.is_in_jsx { return }
+        if self.is_in_jsx {
+            return;
+        }
         self.is_in_jsx = true;
         n.visit_mut_children_with(self);
         self.is_in_jsx = false;
@@ -312,7 +313,7 @@ impl VisitMut for WalnutTransform {
                 JSXElementChild::JSXFragment(frag) => {
                     self.handle_fragment(&mut frag.clone());
                     new_children.push(child.clone());
-                },
+                }
                 JSXElementChild::JSXElement(el) => {
                     if !self.is_valid_jsx_identifier(&el.opening.name) {
                         new_children.push(child.clone());
@@ -323,7 +324,7 @@ impl VisitMut for WalnutTransform {
                             new_children.push(el_ch.clone());
                         }
                     }
-                },
+                }
                 _ => {
                     new_children.push(child.clone());
                 }
@@ -343,7 +344,6 @@ struct WalnutFinder {
 }
 
 impl WalnutFinder {
-
     pub fn new() -> Self {
         WalnutFinder { res: None }
     }
@@ -382,7 +382,7 @@ struct ObjectLitFinder {
 
 impl ObjectLitFinder {
     pub fn new() -> Self {
-        ObjectLitFinder{ res: None }
+        ObjectLitFinder { res: None }
     }
 }
 
@@ -401,28 +401,23 @@ struct WalnutFinalize {
 }
 
 impl WalnutFinalize {
-
     pub fn new(resolver_imports_to_remove: HashSet<String>) -> Self {
-        WalnutFinalize{
+        WalnutFinalize {
             resolver_imports_to_remove,
-            resolver_locs: HashMap::new()
+            resolver_locs: HashMap::new(),
         }
     }
 
     fn remove_import_id(&mut self, decl: &mut ImportDecl, id_string: &String) {
-        if let Some(idx) = decl.specifiers.iter().position(|val| 
-            match val {
-                ImportSpecifier::Named(v) => {
-                    id_string == &String::from(&*v.local.sym)
-                },
-                ImportSpecifier::Default(v) => {
-                    id_string == &String::from(&*v.local.sym)
-                },
-                ImportSpecifier::Namespace(v) => {
-                    id_string == &String::from(&*v.local.sym)
+        if
+            let Some(idx) = decl.specifiers.iter().position(|val| {
+                match val {
+                    ImportSpecifier::Named(v) => { id_string == &String::from(&*v.local.sym) }
+                    ImportSpecifier::Default(v) => { id_string == &String::from(&*v.local.sym) }
+                    ImportSpecifier::Namespace(v) => { id_string == &String::from(&*v.local.sym) }
                 }
-            }
-        ) {
+            })
+        {
             decl.specifiers.swap_remove(idx);
         }
     }
@@ -575,13 +570,12 @@ impl WalnutHandler {
 
     #[napi]
     pub fn run(&mut self) {
-
         let mut scan_first = ScanFirst::new();
         self.program.visit_mut_with(&mut scan_first);
 
-        if !scan_first.should_run { 
+        if !scan_first.should_run {
             self.output_code = Some(self.input_code.clone());
-            return 
+            return;
         }
 
         // Transform pass
@@ -610,13 +604,11 @@ impl WalnutHandler {
 
             // We do this to call any resolver that dynamically returns a result.
             for id in w_trans.resolver_ids.iter() {
-                let k = id;
-                let Some(v) = resolved_labels.get(k)
-                else {
-                    return
+                let Some(v) = resolved_labels.get(id) else {
+                    return;
                 };
                 self.resolver_labels.push(v.clone());
-                self.label_map.insert(v.clone(), k.clone());
+                self.label_map.insert(v.clone(), id.to_owned());
             }
         }
     }
@@ -689,7 +681,7 @@ fn try_resolve_resolver_label(
 
     for (id, path) in resolver_locs {
         let module_specifier = &*path;
-        let base = FileName::Real(PathBuf::from(entry_id.clone()));
+        let base = FileName::Real(PathBuf::from(entry_id));
         let resolved = file_resolver.resolve(&base, module_specifier);
 
         let res_path = match resolved {
@@ -709,7 +701,7 @@ fn try_resolve_resolver_label(
 
         match label {
             Some(s) => {
-                label_map.insert(search_id.clone(), s);
+                label_map.insert(search_id, s);
             }
             None => {}
         }
@@ -727,7 +719,7 @@ fn get_resolver_label(search_id: &String, res_path: FileName) -> Option<String> 
 
     let program = compiler
         .parse_js(
-            fm.clone(),
+            fm,
             &handler,
             EsVersion::Es2020,
             Syntax::Typescript(TsConfig {
@@ -756,9 +748,9 @@ struct ResLabelFinder {
 
 impl ResLabelFinder {
     pub fn new(search_id: String) -> Self {
-        ResLabelFinder{
+        ResLabelFinder {
             search_id,
-            label: None
+            label: None,
         }
     }
 }
@@ -789,8 +781,8 @@ struct LabelExtractor {
 
 impl LabelExtractor {
     pub fn new() -> Self {
-        LabelExtractor{
-            res: None
+        LabelExtractor {
+            res: None,
         }
     }
 

@@ -10,16 +10,16 @@ pub(crate) struct ScanFirst {
     pub should_run: bool,
     pub run_val: bool,
     pub run_resolve: bool,
-    pub run_jsx: bool
+    pub run_jsx: bool,
 }
 
 impl ScanFirst {
     pub fn new() -> Self {
-        ScanFirst { 
+        ScanFirst {
             should_run: false,
             run_val: false,
             run_resolve: false,
-            run_jsx: false
+            run_jsx: false,
         }
     }
 
@@ -37,9 +37,15 @@ impl VisitMut for ScanFirst {
             for spec in n.specifiers.iter() {
                 if let Some(s) = spec.as_named() {
                     match &*s.local.sym {
-                        WalnutSymbols::VAL | WalnutSymbols::PVAL => self.run_val = true,
-                        WalnutSymbols::RESOLVE => self.run_resolve = true,
-                        "$Walnut" => self.run_jsx = true,
+                        WalnutSymbols::VAL | WalnutSymbols::PVAL => {
+                            self.run_val = true;
+                        }
+                        WalnutSymbols::RESOLVE => {
+                            self.run_resolve = true;
+                        }
+                        "$Walnut" => {
+                            self.run_jsx = true;
+                        }
                         _ => {}
                     }
                 }
@@ -49,4 +55,3 @@ impl VisitMut for ScanFirst {
         }
     }
 }
-
