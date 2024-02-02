@@ -10,19 +10,29 @@ use swc_common::{
     SourceMap,
 };
 use swc_ecma_ast::*;
-use swc_ecma_loader::{ resolve::Resolve, TargetEnv };
+use swc_ecma_loader::{ resolve::Resolve, TargetEnv, resolvers::lru::CachingResolver };
 use swc_ecma_parser::{ Syntax, TsConfig };
 use swc_ecma_visit::{ Visit, VisitWith };
+
+pub(crate) fn get_file_resolver(cur_file: &String) -> CachingResolver<swc_ecma_loader::resolvers::tsc::TsConfigResolver<swc_ecma_loader::resolvers::node::NodeModulesResolver>> {
+    resolver::paths_resolver(
+            TargetEnv::Node, 
+            AHashMap::default(), 
+            PathBuf::from(cur_file.clone()), 
+            Vec::new(), 
+            true
+        ) 
+
+}
 
 pub(crate) fn try_resolve_resolver_label(
     resolver_locs: HashMap<String, String>,
     entry_id: &String
 ) -> HashMap<String, String> {
-    let alias_map: AHashMap<String, String> = AHashMap::default();
-    let base_url = PathBuf::from(entry_id.clone());
-    let paths = Vec::new();
 
-    let file_resolver = resolver::paths_resolver(TargetEnv::Node, alias_map, base_url, paths, true);
+    //let file_resolver = resolver::paths_resolver(TargetEnv::Node, alias_map, base_url, paths, true);
+
+    let file_resolver = get_file_resolver(entry_id);
 
     let mut label_map: HashMap<String, String> = HashMap::new();
 
