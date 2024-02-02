@@ -4,6 +4,9 @@ use crate::transform::WalnutHandler;
 
 mod transform;
 mod scan_first;
+mod helpers;
+mod finalize;
+mod resolver;
 
 #[macro_use]
 extern crate napi_derive;
