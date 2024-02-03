@@ -295,7 +295,8 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { WalnutHandler, getHandler } = nativeBinding
+const { WalnutHandler, getHandler, resolveDependencies } = nativeBinding
 
 module.exports.WalnutHandler = WalnutHandler
 module.exports.getHandler = getHandler
+module.exports.resolveDependencies = resolveDependencies

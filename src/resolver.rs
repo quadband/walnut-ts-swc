@@ -10,13 +10,17 @@ use swc_common::{
     SourceMap,
 };
 use swc_ecma_ast::*;
-use swc_ecma_loader::{ resolve::Resolve, TargetEnv, resolvers::lru::CachingResolver };
+use swc_ecma_loader::{
+    resolve::Resolve,
+    TargetEnv,
+    resolvers::{ tsc::TsConfigResolver, lru::CachingResolver, node::NodeModulesResolver },
+};
 use swc_ecma_parser::{ Syntax, TsConfig };
 use swc_ecma_visit::{ Visit, VisitWith };
 
 pub(crate) fn get_file_resolver(
     cur_file: &String
-) -> CachingResolver<swc_ecma_loader::resolvers::tsc::TsConfigResolver<swc_ecma_loader::resolvers::node::NodeModulesResolver>> {
+) -> CachingResolver<TsConfigResolver<NodeModulesResolver>> {
     resolver::paths_resolver(
         TargetEnv::Node,
         AHashMap::default(),
