@@ -31,22 +31,15 @@ use swc_ecma_visit::{ Visit, VisitWith };
 // }
 
 fn get_file_resolver(base: &String) -> CachingResolver<TsConfigResolver<NodeModulesResolver>> {
-  let r = TsConfigResolver::new(
-    NodeModulesResolver::new(
-      TargetEnv::Node,
-      AHashMap::default(),
-      true
-    ),
-    PathBuf::from(base.clone()),
-    Vec::new(),
-);
+    let r = TsConfigResolver::new(
+        NodeModulesResolver::new(TargetEnv::Node, AHashMap::default(), true),
+        PathBuf::from(base.clone()),
+        Vec::new()
+    );
 
-  let cr: CachingResolver<TsConfigResolver<NodeModulesResolver>> = CachingResolver::new(
-    40,
-    r
-  );
+    let cr: CachingResolver<TsConfigResolver<NodeModulesResolver>> = CachingResolver::new(40, r);
 
-  cr
+    cr
 }
 
 pub(crate) fn resolve_deps(base: &String, entry_id: &String) {
@@ -81,7 +74,7 @@ pub(crate) fn resolve_deps(base: &String, entry_id: &String) {
 struct ImportFinder {
     file_resolver: CachingResolver<TsConfigResolver<NodeModulesResolver>>,
     entry: String,
-    base: String
+    base: String,
 }
 
 impl ImportFinder {
@@ -89,7 +82,7 @@ impl ImportFinder {
         ImportFinder {
             file_resolver: get_file_resolver(base),
             entry: entry.clone(),
-            base: base.clone()
+            base: base.clone(),
         }
     }
 }
